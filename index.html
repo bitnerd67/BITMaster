@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Family Condo Reservations</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header>
+    <h1>Family Condo</h1>
+    <p class="subtitle">Reserve your stay</p>
+  </header>
+
+  <main>
+    <section class="calendar-section">
+      <div class="calendar-header">
+        <button id="prev-month" aria-label="Previous month">&larr;</button>
+        <h2 id="calendar-title"></h2>
+        <button id="next-month" aria-label="Next month">&rarr;</button>
+      </div>
+      <div class="calendar-legend">
+        <span class="legend-item"><span class="dot available"></span> Available</span>
+        <span class="legend-item"><span class="dot reserved"></span> Reserved</span>
+        <span class="legend-item"><span class="dot selected"></span> Your Selection</span>
+      </div>
+      <div class="calendar-grid">
+        <div class="day-label">Sun</div>
+        <div class="day-label">Mon</div>
+        <div class="day-label">Tue</div>
+        <div class="day-label">Wed</div>
+        <div class="day-label">Thu</div>
+        <div class="day-label">Fri</div>
+        <div class="day-label">Sat</div>
+      </div>
+      <div id="calendar-days" class="calendar-grid"></div>
+    </section>
+
+    <section class="reservation-section">
+      <h2>Make a Reservation</h2>
+      <form id="reservation-form">
+        <div class="form-group">
+          <label for="guest-name">Your Name</label>
+          <input type="text" id="guest-name" required placeholder="e.g. Jane Smith">
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="check-in">Check-in</label>
+            <input type="date" id="check-in" required>
+          </div>
+          <div class="form-group">
+            <label for="check-out">Check-out</label>
+            <input type="date" id="check-out" required>
+          </div>
+        </div>
+        <div class="form-group">
+          <label for="num-guests">Number of Guests</label>
+          <input type="number" id="num-guests" min="1" max="20" value="1" required>
+        </div>
+        <div class="form-group">
+          <label for="notes">Notes <span class="optional">(optional)</span></label>
+          <textarea id="notes" rows="3" placeholder="Any special requests or info for the family..."></textarea>
+        </div>
+        <button type="submit" class="btn-primary">Reserve</button>
+        <p id="form-error" class="form-error" hidden></p>
+      </form>
+    </section>
+
+    <section class="reservations-list-section">
+      <h2>Upcoming Reservations</h2>
+      <div id="reservations-list">
+        <p class="empty-state">No reservations yet. Be the first to book!</p>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <p>&copy; 2026 Family Condo Reservations</p>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>
