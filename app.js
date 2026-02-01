@@ -8,6 +8,14 @@
   let selectionStart = null; // Date string YYYY-MM-DD
   let selectionEnd = null;
 
+  // --- EmailJS config ---
+  // Replace these with your actual EmailJS service and template IDs.
+  // See the setup comment in index.html for instructions.
+  var EMAILJS_SERVICE_ID = "YOUR_SERVICE_ID";
+  var EMAILJS_APPROVAL_TEMPLATE = "approval_request";
+  var EMAILJS_GUEST_TEMPLATE = "guest_confirmation";
+  var ADMIN_EMAIL = "bitnercondo@gmail.com";
+
   // --- DOM refs ---
   const calendarTitle = document.getElementById("calendar-title");
   const calendarDays = document.getElementById("calendar-days");
@@ -17,6 +25,8 @@
   const checkInInput = document.getElementById("check-in");
   const checkOutInput = document.getElementById("check-out");
   const formError = document.getElementById("form-error");
+  const formSuccess = document.getElementById("form-success");
+  const submitBtn = document.getElementById("submit-btn");
   const reservationsList = document.getElementById("reservations-list");
 
   // --- Helpers ---
@@ -61,15 +71,17 @@
   }
 
   // --- Build reserved-date lookup ---
+  // Returns { dateStr: { name: string, status: "pending"|"approved" } }
   function buildReservedMap() {
     const reservations = loadReservations();
-    const map = {}; // dateStr -> guest name
+    const map = {};
     reservations.forEach(function (r) {
       const start = parseDate(r.checkIn);
       const end = parseDate(r.checkOut);
+      var status = r.status || "approved";
       for (let d = new Date(start); d < end; d.setDate(d.getDate() + 1)) {
         const key = toDateStr(d.getFullYear(), d.getMonth(), d.getDate());
-        map[key] = r.name;
+        map[key] = { name: r.name, status: status };
       }
     });
     return map;
@@ -121,18 +133,18 @@
       el.textContent = day;
 
       const isPast = dateStr < todayStr;
-      const reservedBy = reservedMap[dateStr];
+      const entry = reservedMap[dateStr];
       const isSelected =
         dateStr === selectionStart || dateStr === selectionEnd;
       const isInRange = selectedSet[dateStr];
 
       if (isPast) {
         el.classList.add("past");
-      } else if (reservedBy) {
-        el.classList.add("reserved");
+      } else if (entry) {
+        el.classList.add(entry.status === "pending" ? "pending" : "reserved");
         const tooltip = document.createElement("span");
         tooltip.className = "tooltip";
-        tooltip.textContent = reservedBy;
+        tooltip.textContent = entry.name + (entry.status === "pending" ? " (pending)" : "");
         el.appendChild(tooltip);
       } else if (isSelected) {
         el.classList.add("selected");
@@ -204,10 +216,14 @@
       var notesHtml = r.notes
         ? "<p>" + escapeHtml(r.notes) + "</p>"
         : "";
+      var status = r.status || "approved";
+      var statusBadge = status === "pending"
+        ? '<span class="badge badge-pending">Pending Approval</span>'
+        : '<span class="badge badge-approved">Approved</span>';
 
       card.innerHTML =
         '<div class="reservation-info">' +
-        "<h3>" + escapeHtml(r.name) + "</h3>" +
+        "<h3>" + escapeHtml(r.name) + " " + statusBadge + "</h3>" +
         '<p class="dates">' + formatDisplay(r.checkIn) + " &ndash; " + formatDisplay(r.checkOut) + "</p>" +
         "<p>" + r.guests + " guest" + (r.guests > 1 ? "s" : "") + "</p>" +
         notesHtml +
@@ -231,19 +247,68 @@
     return div.innerHTML;
   }
 
+  // --- Email sending ---
+  function sendEmails(reservation) {
+    // Check if EmailJS is loaded and configured
+    if (typeof emailjs === "undefined") {
+      console.warn("EmailJS not loaded — emails will not be sent.");
+      return;
+    }
+    if (EMAILJS_SERVICE_ID === "YOUR_SERVICE_ID") {
+      console.warn("EmailJS not configured — update the service/template IDs in app.js");
+      return;
+    }
+
+    // Email 1: Notify admin (bitnercondo@gmail.com) for approval
+    emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_APPROVAL_TEMPLATE, {
+      to_email: ADMIN_EMAIL,
+      from_name: reservation.name,
+      from_email: reservation.email,
+      check_in: formatDisplay(reservation.checkIn),
+      check_out: formatDisplay(reservation.checkOut),
+      guests: reservation.guests,
+      notes: reservation.notes || "None",
+    }).then(function () {
+      console.log("Approval request email sent to admin.");
+    }, function (err) {
+      console.error("Failed to send approval email:", err);
+    });
+
+    // Email 2: Confirm to the guest that their request is pending
+    emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_GUEST_TEMPLATE, {
+      to_name: reservation.name,
+      to_email: reservation.email,
+      check_in: formatDisplay(reservation.checkIn),
+      check_out: formatDisplay(reservation.checkOut),
+      guests: reservation.guests,
+    }).then(function () {
+      console.log("Confirmation email sent to guest.");
+    }, function (err) {
+      console.error("Failed to send guest confirmation email:", err);
+    });
+  }
+
+  function showSuccess(msg) {
+    formSuccess.textContent = msg;
+    formSuccess.hidden = false;
+    setTimeout(function () { formSuccess.hidden = true; }, 6000);
+  }
+
   // --- Form submission ---
   function handleSubmit(e) {
     e.preventDefault();
     formError.hidden = true;
+    formSuccess.hidden = true;
 
     var name = document.getElementById("guest-name").value.trim();
+    var email = document.getElementById("guest-email").value.trim();
     var checkIn = checkInInput.value;
     var checkOut = checkOutInput.value;
     var guests = parseInt(document.getElementById("num-guests").value, 10);
     var notes = document.getElementById("notes").value.trim();
 
-    if (!name || !checkIn || !checkOut) {
-      showError("Please fill in your name, check-in, and check-out dates.");
+    if (!name || !email || !checkIn || !checkOut) {
+      showError("Please fill in your name, email, check-in, and check-out dates.");
       return;
     }
 
@@ -273,20 +338,32 @@
     var reservation = {
       id: Date.now().toString(36) + Math.random().toString(36).slice(2, 7),
       name: name,
+      email: email,
       checkIn: checkIn,
       checkOut: checkOut,
       guests: guests,
       notes: notes,
+      status: "pending",
     };
+
+    // Disable button while sending
+    submitBtn.disabled = true;
+    submitBtn.textContent = "Submitting...";
 
     reservations.push(reservation);
     saveReservations(reservations);
+
+    // Send notification emails
+    sendEmails(reservation);
 
     // Reset form and selection
     form.reset();
     selectionStart = null;
     selectionEnd = null;
+    submitBtn.disabled = false;
+    submitBtn.textContent = "Submit for Approval";
 
+    showSuccess("Reservation submitted! A confirmation email has been sent. Your booking is pending approval.");
     renderCalendar();
     renderReservations();
   }

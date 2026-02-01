@@ -22,6 +22,7 @@
       <div class="calendar-legend">
         <span class="legend-item"><span class="dot available"></span> Available</span>
         <span class="legend-item"><span class="dot reserved"></span> Reserved</span>
+        <span class="legend-item"><span class="dot pending"></span> Pending</span>
         <span class="legend-item"><span class="dot selected"></span> Your Selection</span>
       </div>
       <div class="calendar-grid">
@@ -43,6 +44,10 @@
           <label for="guest-name">Your Name</label>
           <input type="text" id="guest-name" required placeholder="e.g. Jane Smith">
         </div>
+        <div class="form-group">
+          <label for="guest-email">Your Email</label>
+          <input type="email" id="guest-email" required placeholder="e.g. jane@example.com">
+        </div>
         <div class="form-row">
           <div class="form-group">
             <label for="check-in">Check-in</label>
@@ -61,8 +66,9 @@
           <label for="notes">Notes <span class="optional">(optional)</span></label>
           <textarea id="notes" rows="3" placeholder="Any special requests or info for the family..."></textarea>
         </div>
-        <button type="submit" class="btn-primary">Reserve</button>
+        <button type="submit" id="submit-btn" class="btn-primary">Submit for Approval</button>
         <p id="form-error" class="form-error" hidden></p>
+        <p id="form-success" class="form-success" hidden></p>
       </form>
     </section>
 
@@ -78,6 +84,23 @@
     <p>&copy; 2026 Family Condo Reservations</p>
   </footer>
 
+  <!--
+    EmailJS Setup (required for email notifications):
+    1. Create a free account at https://www.emailjs.com
+    2. Add an Email Service (e.g. Gmail) — note the Service ID
+    3. Create two Email Templates:
+       - "approval_request" — sent to bitnercondo@gmail.com
+         Use variables: {{from_name}}, {{from_email}}, {{check_in}}, {{check_out}}, {{guests}}, {{notes}}
+       - "guest_confirmation" — sent to the person reserving
+         Use variables: {{to_name}}, {{to_email}}, {{check_in}}, {{check_out}}, {{guests}}
+    4. Replace YOUR_PUBLIC_KEY below with your EmailJS public key
+    5. Update the service/template IDs in app.js if you chose different names
+  -->
+  <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
+  <script>
+    // Replace YOUR_PUBLIC_KEY with your actual EmailJS public key
+    (function() { emailjs.init("YOUR_PUBLIC_KEY"); })();
+  </script>
   <script src="app.js"></script>
 </body>
 </html>
