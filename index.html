@@ -95,7 +95,7 @@
   </footer>
 
   <!--
-    EmailJS Setup (required for email notifications):
+    === EmailJS Setup (required for email notifications) ===
     1. Create a free account at https://www.emailjs.com
     2. Add an Email Service (e.g. Gmail) — note the Service ID
     3. Create two Email Templates:
@@ -105,6 +105,12 @@
          Use variables: {{to_name}}, {{to_email}}, {{shareholder}}, {{check_in}}, {{check_out}}, {{guests}}
     4. Replace YOUR_PUBLIC_KEY below with your EmailJS public key
     5. Update the service/template IDs in app.js if you chose different names
+
+    === Textbelt SMS Setup (required for text message notifications) ===
+    1. In app.js, set ADMIN_PHONE to the admin's phone number (digits only, e.g. "5551234567")
+    2. For testing: the default key "textbelt" sends 1 free SMS per day
+    3. For production: purchase a key at https://textbelt.com (250 texts for $10)
+    4. Replace TEXTBELT_KEY in app.js with your purchased key
   -->
   <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
   <script>

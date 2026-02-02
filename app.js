@@ -16,6 +16,13 @@
   var EMAILJS_GUEST_TEMPLATE = "guest_confirmation";
   var ADMIN_EMAIL = "bitnercondo@gmail.com";
 
+  // --- Textbelt SMS config ---
+  // For testing: use "textbelt" as the key (1 free text/day).
+  // For production: purchase a key at https://textbelt.com
+  var TEXTBELT_KEY = "textbelt";
+  // Admin phone number to receive SMS approval requests (digits only, e.g. "5551234567")
+  var ADMIN_PHONE = "YOUR_ADMIN_PHONE";
+
   // --- DOM refs ---
   const calendarTitle = document.getElementById("calendar-title");
   const calendarDays = document.getElementById("calendar-days");
@@ -300,6 +307,58 @@
     });
   }
 
+  // --- SMS sending via Textbelt ---
+  function sendSms(phone, message) {
+    if (TEXTBELT_KEY === "textbelt") {
+      console.warn("Textbelt using free test key (1 SMS/day). Get a production key at https://textbelt.com");
+    }
+    // Strip non-digit characters from phone number
+    var digits = phone.replace(/\D/g, "");
+    return fetch("https://textbelt.com/text", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        phone: digits,
+        message: message,
+        key: TEXTBELT_KEY,
+      }),
+    }).then(function (res) {
+      return res.json();
+    }).then(function (data) {
+      if (data.success) {
+        console.log("SMS sent to " + digits);
+      } else {
+        console.error("SMS failed:", data.error);
+      }
+    }, function (err) {
+      console.error("SMS request failed:", err);
+    });
+  }
+
+  function sendTextMessages(reservation) {
+    if (ADMIN_PHONE === "YOUR_ADMIN_PHONE") {
+      console.warn("SMS not configured — set ADMIN_PHONE in app.js to enable text messages.");
+      return;
+    }
+
+    var checkIn = formatDisplay(reservation.checkIn);
+    var checkOut = formatDisplay(reservation.checkOut);
+
+    // SMS 1: Notify admin of new reservation request
+    var adminMsg = "New condo reservation request from " + reservation.name +
+      " (Shareholder: " + reservation.shareholder + "). " +
+      checkIn + " - " + checkOut + ", " +
+      reservation.guests + " guest(s). Needs your approval.";
+    sendSms(ADMIN_PHONE, adminMsg);
+
+    // SMS 2: Confirm to guest that their request is pending
+    var guestMsg = "Hi " + reservation.name +
+      ", your Family Condo reservation (" + checkIn + " - " + checkOut +
+      ") has been submitted and is pending approval. " +
+      "You'll be notified once it's reviewed.";
+    sendSms(reservation.phone, guestMsg);
+  }
+
   function showSuccess(msg) {
     formSuccess.textContent = msg;
     formSuccess.hidden = false;
@@ -369,8 +428,9 @@
     reservations.push(reservation);
     saveReservations(reservations);
 
-    // Send notification emails
+    // Send notification emails and text messages
     sendEmails(reservation);
+    sendTextMessages(reservation);
 
     // Reset form and selection
     form.reset();
@@ -379,7 +439,7 @@
     submitBtn.disabled = false;
     submitBtn.textContent = "Submit for Approval";
 
-    showSuccess("Reservation submitted! A confirmation email has been sent. Your booking is pending approval.");
+    showSuccess("Reservation submitted! A confirmation email and text message have been sent. Your booking is pending approval.");
     renderCalendar();
     renderReservations();
   }
