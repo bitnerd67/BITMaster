@@ -221,11 +221,20 @@
         ? '<span class="badge badge-pending">Pending Approval</span>'
         : '<span class="badge badge-approved">Approved</span>';
 
+      var shareholderHtml = r.shareholder
+        ? '<p>Shareholder: <strong>' + escapeHtml(r.shareholder) + '</strong></p>'
+        : "";
+      var phoneHtml = r.phone
+        ? "<p>Phone: " + escapeHtml(r.phone) + "</p>"
+        : "";
+
       card.innerHTML =
         '<div class="reservation-info">' +
         "<h3>" + escapeHtml(r.name) + " " + statusBadge + "</h3>" +
         '<p class="dates">' + formatDisplay(r.checkIn) + " &ndash; " + formatDisplay(r.checkOut) + "</p>" +
+        shareholderHtml +
         "<p>" + r.guests + " guest" + (r.guests > 1 ? "s" : "") + "</p>" +
+        phoneHtml +
         notesHtml +
         "</div>";
 
@@ -264,6 +273,8 @@
       to_email: ADMIN_EMAIL,
       from_name: reservation.name,
       from_email: reservation.email,
+      phone: reservation.phone,
+      shareholder: reservation.shareholder,
       check_in: formatDisplay(reservation.checkIn),
       check_out: formatDisplay(reservation.checkOut),
       guests: reservation.guests,
@@ -278,6 +289,7 @@
     emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_GUEST_TEMPLATE, {
       to_name: reservation.name,
       to_email: reservation.email,
+      shareholder: reservation.shareholder,
       check_in: formatDisplay(reservation.checkIn),
       check_out: formatDisplay(reservation.checkOut),
       guests: reservation.guests,
@@ -302,13 +314,15 @@
 
     var name = document.getElementById("guest-name").value.trim();
     var email = document.getElementById("guest-email").value.trim();
+    var phone = document.getElementById("guest-phone").value.trim();
+    var shareholder = document.getElementById("shareholder-name").value.trim();
     var checkIn = checkInInput.value;
     var checkOut = checkOutInput.value;
     var guests = parseInt(document.getElementById("num-guests").value, 10);
     var notes = document.getElementById("notes").value.trim();
 
-    if (!name || !email || !checkIn || !checkOut) {
-      showError("Please fill in your name, email, check-in, and check-out dates.");
+    if (!name || !email || !phone || !shareholder || !checkIn || !checkOut) {
+      showError("Please fill in all required fields (name, email, phone, shareholder, and dates).");
       return;
     }
 
@@ -339,6 +353,8 @@
       id: Date.now().toString(36) + Math.random().toString(36).slice(2, 7),
       name: name,
       email: email,
+      phone: phone,
+      shareholder: shareholder,
       checkIn: checkIn,
       checkOut: checkOut,
       guests: guests,
