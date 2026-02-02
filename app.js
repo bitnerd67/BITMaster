@@ -414,6 +414,19 @@
       return;
     }
 
+    // Deny if person already has an active reservation (pending or approved)
+    var nameLower = name.toLowerCase();
+    var existingReservation = reservations.some(function (r) {
+      return r.name.toLowerCase() === nameLower &&
+        r.status !== "denied" &&
+        r.checkOut >= today();
+    });
+
+    if (existingReservation) {
+      showError("You already have an active reservation. Please cancel your existing one before booking again.");
+      return;
+    }
+
     var reservation = {
       name: name,
       email: email,
