@@ -10,6 +10,9 @@
   <header>
     <h1>Family Condo</h1>
     <p class="subtitle">Reserve your stay</p>
+    <nav class="header-nav">
+      <a href="admin.html">Admin</a>
+    </nav>
   </header>
 
   <main>
@@ -95,6 +98,13 @@
   </footer>
 
   <!--
+    === Firebase Setup (required — shared database for all users) ===
+    1. Go to https://console.firebase.google.com and create a project
+    2. In Project Settings > Your apps, click web icon and register the app
+    3. Copy the config into firebase-config.js
+    4. Go to Firestore Database > Create database > Start in test mode
+    5. See firebase-config.js for full instructions and security rules
+
     === EmailJS Setup (required for email notifications) ===
     1. Create a free account at https://www.emailjs.com
     2. Add an Email Service (e.g. Gmail) — note the Service ID
@@ -112,11 +122,19 @@
     3. For production: purchase a key at https://textbelt.com (250 texts for $10)
     4. Replace TEXTBELT_KEY in app.js with your purchased key
   -->
+
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+  <script src="firebase-config.js"></script>
+
+  <!-- EmailJS -->
   <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
   <script>
     // Replace YOUR_PUBLIC_KEY with your actual EmailJS public key
     (function() { emailjs.init("YOUR_PUBLIC_KEY"); })();
   </script>
+
   <script src="app.js"></script>
 </body>
 </html>

@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin — Family Condo Reservations</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header>
+    <h1>Family Condo</h1>
+    <p class="subtitle">Admin — Manage Reservations</p>
+    <nav class="header-nav">
+      <a href="index.html">Back to Calendar</a>
+    </nav>
+  </header>
+
+  <!-- Login gate -->
+  <main id="login-screen" class="admin-login">
+    <section>
+      <h2>Admin Login</h2>
+      <form id="login-form">
+        <div class="form-group">
+          <label for="admin-password">Password</label>
+          <input type="password" id="admin-password" required placeholder="Enter admin password">
+        </div>
+        <button type="submit" class="btn-primary">Log In</button>
+        <p id="login-error" class="form-error" hidden></p>
+      </form>
+    </section>
+  </main>
+
+  <!-- Admin dashboard (hidden until login) -->
+  <main id="admin-dashboard" hidden>
+    <section>
+      <h2>Pending Reservations</h2>
+      <div id="pending-list">
+        <p class="empty-state">No pending reservations.</p>
+      </div>
+    </section>
+
+    <section>
+      <h2>Approved Reservations</h2>
+      <div id="approved-list">
+        <p class="empty-state">No approved reservations.</p>
+      </div>
+    </section>
+
+    <section>
+      <h2>Denied Reservations</h2>
+      <div id="denied-list">
+        <p class="empty-state">No denied reservations.</p>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <p>&copy; 2026 Family Condo Reservations</p>
+  </footer>
+
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+  <script src="firebase-config.js"></script>
+
+  <!-- EmailJS (for sending approval/denial notifications) -->
+  <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
+  <script>
+    (function() { emailjs.init("YOUR_PUBLIC_KEY"); })();
+  </script>
+
+  <script src="admin.js"></script>
+</body>
+</html>

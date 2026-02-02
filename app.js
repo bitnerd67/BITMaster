@@ -2,11 +2,11 @@
   "use strict";
 
   // --- State ---
-  const STORAGE_KEY = "condo_reservations";
-  let currentYear;
-  let currentMonth; // 0-indexed
-  let selectionStart = null; // Date string YYYY-MM-DD
-  let selectionEnd = null;
+  var reservations = []; // loaded from Firestore
+  var currentYear;
+  var currentMonth; // 0-indexed
+  var selectionStart = null; // Date string YYYY-MM-DD
+  var selectionEnd = null;
 
   // --- EmailJS config ---
   // Replace these with your actual EmailJS service and template IDs.
@@ -24,30 +24,34 @@
   var ADMIN_PHONE = "YOUR_ADMIN_PHONE";
 
   // --- DOM refs ---
-  const calendarTitle = document.getElementById("calendar-title");
-  const calendarDays = document.getElementById("calendar-days");
-  const prevBtn = document.getElementById("prev-month");
-  const nextBtn = document.getElementById("next-month");
-  const form = document.getElementById("reservation-form");
-  const checkInInput = document.getElementById("check-in");
-  const checkOutInput = document.getElementById("check-out");
-  const formError = document.getElementById("form-error");
-  const formSuccess = document.getElementById("form-success");
-  const submitBtn = document.getElementById("submit-btn");
-  const reservationsList = document.getElementById("reservations-list");
+  var calendarTitle = document.getElementById("calendar-title");
+  var calendarDays = document.getElementById("calendar-days");
+  var prevBtn = document.getElementById("prev-month");
+  var nextBtn = document.getElementById("next-month");
+  var form = document.getElementById("reservation-form");
+  var checkInInput = document.getElementById("check-in");
+  var checkOutInput = document.getElementById("check-out");
+  var formError = document.getElementById("form-error");
+  var formSuccess = document.getElementById("form-success");
+  var submitBtn = document.getElementById("submit-btn");
+  var reservationsList = document.getElementById("reservations-list");
 
   // --- Helpers ---
   function toDateStr(year, month, day) {
-    return `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+    var m = String(month + 1);
+    var d = String(day);
+    if (m.length < 2) m = "0" + m;
+    if (d.length < 2) d = "0" + d;
+    return year + "-" + m + "-" + d;
   }
 
   function parseDate(str) {
-    const [y, m, d] = str.split("-").map(Number);
-    return new Date(y, m - 1, d);
+    var parts = str.split("-");
+    return new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
   }
 
   function formatDisplay(str) {
-    const d = parseDate(str);
+    var d = parseDate(str);
     return d.toLocaleDateString("en-US", {
       month: "short",
       day: "numeric",
@@ -56,7 +60,7 @@
   }
 
   function today() {
-    const d = new Date();
+    var d = new Date();
     return toDateStr(d.getFullYear(), d.getMonth(), d.getDate());
   }
 
@@ -64,30 +68,46 @@
     return startA < endB && startB < endA;
   }
 
-  // --- Storage ---
-  function loadReservations() {
-    try {
-      return JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
-    } catch {
-      return [];
-    }
+  function escapeHtml(str) {
+    var div = document.createElement("div");
+    div.appendChild(document.createTextNode(str));
+    return div.innerHTML;
   }
 
-  function saveReservations(list) {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(list));
+  // --- Firestore ---
+  function subscribeToReservations() {
+    db.collection("reservations").onSnapshot(function (snapshot) {
+      reservations = [];
+      snapshot.forEach(function (doc) {
+        var data = doc.data();
+        data.id = doc.id;
+        reservations.push(data);
+      });
+      renderCalendar();
+      renderReservations();
+    }, function (err) {
+      console.error("Firestore subscription error:", err);
+    });
+  }
+
+  function addReservation(reservation) {
+    return db.collection("reservations").add(reservation);
+  }
+
+  function deleteReservation(id) {
+    return db.collection("reservations").doc(id).delete();
   }
 
   // --- Build reserved-date lookup ---
-  // Returns { dateStr: { name: string, status: "pending"|"approved" } }
   function buildReservedMap() {
-    const reservations = loadReservations();
-    const map = {};
+    var map = {};
     reservations.forEach(function (r) {
-      const start = parseDate(r.checkIn);
-      const end = parseDate(r.checkOut);
+      if (r.status === "denied") return;
+      var start = parseDate(r.checkIn);
+      var end = parseDate(r.checkOut);
       var status = r.status || "approved";
-      for (let d = new Date(start); d < end; d.setDate(d.getDate() + 1)) {
-        const key = toDateStr(d.getFullYear(), d.getMonth(), d.getDate());
+      for (var d = new Date(start); d < end; d.setDate(d.getDate() + 1)) {
+        var key = toDateStr(d.getFullYear(), d.getMonth(), d.getDate());
         map[key] = { name: r.name, status: status };
       }
     });
@@ -96,15 +116,13 @@
 
   // --- Build selected-range set ---
   function buildSelectedSet() {
-    const set = {};
+    var set = {};
     if (!selectionStart || !selectionEnd) return set;
-    const start = parseDate(
-      selectionStart < selectionEnd ? selectionStart : selectionEnd,
-    );
-    const end = parseDate(
-      selectionStart < selectionEnd ? selectionEnd : selectionStart,
-    );
-    for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+    var s = selectionStart < selectionEnd ? selectionStart : selectionEnd;
+    var e = selectionStart < selectionEnd ? selectionEnd : selectionStart;
+    var start = parseDate(s);
+    var end = parseDate(e);
+    for (var d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
       set[toDateStr(d.getFullYear(), d.getMonth(), d.getDate())] = true;
     }
     return set;
@@ -112,62 +130,61 @@
 
   // --- Calendar rendering ---
   function renderCalendar() {
-    const monthNames = [
+    var monthNames = [
       "January", "February", "March", "April", "May", "June",
       "July", "August", "September", "October", "November", "December",
     ];
-    calendarTitle.textContent = `${monthNames[currentMonth]} ${currentYear}`;
+    calendarTitle.textContent = monthNames[currentMonth] + " " + currentYear;
 
-    const firstDay = new Date(currentYear, currentMonth, 1).getDay();
-    const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
-    const todayStr = today();
-    const reservedMap = buildReservedMap();
-    const selectedSet = buildSelectedSet();
+    var firstDay = new Date(currentYear, currentMonth, 1).getDay();
+    var daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
+    var todayStr = today();
+    var reservedMap = buildReservedMap();
+    var selectedSet = buildSelectedSet();
 
     calendarDays.innerHTML = "";
 
     // Leading empties
-    for (let i = 0; i < firstDay; i++) {
-      const el = document.createElement("div");
-      el.className = "calendar-day empty";
-      calendarDays.appendChild(el);
+    for (var i = 0; i < firstDay; i++) {
+      var empty = document.createElement("div");
+      empty.className = "calendar-day empty";
+      calendarDays.appendChild(empty);
     }
 
-    for (let day = 1; day <= daysInMonth; day++) {
-      const dateStr = toDateStr(currentYear, currentMonth, day);
-      const el = document.createElement("div");
+    for (var day = 1; day <= daysInMonth; day++) {
+      var dateStr = toDateStr(currentYear, currentMonth, day);
+      var el = document.createElement("div");
       el.className = "calendar-day";
       el.textContent = day;
 
-      const isPast = dateStr < todayStr;
-      const entry = reservedMap[dateStr];
-      const isSelected =
-        dateStr === selectionStart || dateStr === selectionEnd;
-      const isInRange = selectedSet[dateStr];
+      var isPast = dateStr < todayStr;
+      var entry = reservedMap[dateStr];
+      var isSelected = dateStr === selectionStart || dateStr === selectionEnd;
+      var isInRange = selectedSet[dateStr];
 
       if (isPast) {
         el.classList.add("past");
       } else if (entry) {
         el.classList.add(entry.status === "pending" ? "pending" : "reserved");
-        const tooltip = document.createElement("span");
+        var tooltip = document.createElement("span");
         tooltip.className = "tooltip";
         tooltip.textContent = entry.name + (entry.status === "pending" ? " (pending)" : "");
         el.appendChild(tooltip);
       } else if (isSelected) {
         el.classList.add("selected");
-        el.addEventListener("click", function () {
-          handleDayClick(dateStr);
-        });
+        el.addEventListener("click", (function (ds) {
+          return function () { handleDayClick(ds); };
+        })(dateStr));
       } else if (isInRange) {
         el.classList.add("in-range");
-        el.addEventListener("click", function () {
-          handleDayClick(dateStr);
-        });
+        el.addEventListener("click", (function (ds) {
+          return function () { handleDayClick(ds); };
+        })(dateStr));
       } else {
         el.classList.add("available");
-        el.addEventListener("click", function () {
-          handleDayClick(dateStr);
-        });
+        el.addEventListener("click", (function (ds) {
+          return function () { handleDayClick(ds); };
+        })(dateStr));
       }
 
       calendarDays.appendChild(el);
@@ -176,13 +193,11 @@
 
   function handleDayClick(dateStr) {
     if (!selectionStart || selectionEnd) {
-      // Start new selection
       selectionStart = dateStr;
       selectionEnd = null;
       checkInInput.value = dateStr;
       checkOutInput.value = "";
     } else {
-      // Complete selection
       selectionEnd = dateStr;
       if (selectionStart > selectionEnd) {
         var tmp = selectionStart;
@@ -197,13 +212,11 @@
 
   // --- Reservation list ---
   function renderReservations() {
-    const reservations = loadReservations();
-    const todayStr = today();
+    var todayStr = today();
 
-    // Filter to current and future reservations, sorted by check-in
-    const upcoming = reservations
+    var upcoming = reservations
       .filter(function (r) {
-        return r.checkOut >= todayStr;
+        return r.checkOut >= todayStr && r.status !== "denied";
       })
       .sort(function (a, b) {
         return a.checkIn < b.checkIn ? -1 : 1;
@@ -217,7 +230,7 @@
 
     reservationsList.innerHTML = "";
     upcoming.forEach(function (r) {
-      const card = document.createElement("div");
+      var card = document.createElement("div");
       card.className = "reservation-card";
 
       var notesHtml = r.notes
@@ -249,7 +262,10 @@
       cancelBtn.className = "btn-cancel";
       cancelBtn.textContent = "Cancel";
       cancelBtn.addEventListener("click", function () {
-        cancelReservation(r.id);
+        if (!confirm("Cancel this reservation?")) return;
+        deleteReservation(r.id).catch(function (err) {
+          console.error("Failed to cancel reservation:", err);
+        });
       });
       card.appendChild(cancelBtn);
 
@@ -257,15 +273,8 @@
     });
   }
 
-  function escapeHtml(str) {
-    var div = document.createElement("div");
-    div.appendChild(document.createTextNode(str));
-    return div.innerHTML;
-  }
-
   // --- Email sending ---
   function sendEmails(reservation) {
-    // Check if EmailJS is loaded and configured
     if (typeof emailjs === "undefined") {
       console.warn("EmailJS not loaded — emails will not be sent.");
       return;
@@ -275,7 +284,6 @@
       return;
     }
 
-    // Email 1: Notify admin (bitnercondo@gmail.com) for approval
     emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_APPROVAL_TEMPLATE, {
       to_email: ADMIN_EMAIL,
       from_name: reservation.name,
@@ -292,7 +300,6 @@
       console.error("Failed to send approval email:", err);
     });
 
-    // Email 2: Confirm to the guest that their request is pending
     emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_GUEST_TEMPLATE, {
       to_name: reservation.name,
       to_email: reservation.email,
@@ -312,7 +319,6 @@
     if (TEXTBELT_KEY === "textbelt") {
       console.warn("Textbelt using free test key (1 SMS/day). Get a production key at https://textbelt.com");
     }
-    // Strip non-digit characters from phone number
     var digits = phone.replace(/\D/g, "");
     return fetch("https://textbelt.com/text", {
       method: "POST",
@@ -344,14 +350,12 @@
     var checkIn = formatDisplay(reservation.checkIn);
     var checkOut = formatDisplay(reservation.checkOut);
 
-    // SMS 1: Notify admin of new reservation request
     var adminMsg = "New condo reservation request from " + reservation.name +
       " (Shareholder: " + reservation.shareholder + "). " +
       checkIn + " - " + checkOut + ", " +
       reservation.guests + " guest(s). Needs your approval.";
     sendSms(ADMIN_PHONE, adminMsg);
 
-    // SMS 2: Confirm to guest that their request is pending
     var guestMsg = "Hi " + reservation.name +
       ", your Family Condo reservation (" + checkIn + " - " + checkOut +
       ") has been submitted and is pending approval. " +
@@ -363,6 +367,11 @@
     formSuccess.textContent = msg;
     formSuccess.hidden = false;
     setTimeout(function () { formSuccess.hidden = true; }, 6000);
+  }
+
+  function showError(msg) {
+    formError.textContent = msg;
+    formError.hidden = false;
   }
 
   // --- Form submission ---
@@ -395,21 +404,17 @@
       return;
     }
 
-    // Check for overlapping reservations
-    var reservations = loadReservations();
+    // Check for overlapping reservations (exclude denied)
     var hasConflict = reservations.some(function (r) {
-      return datesOverlap(checkIn, checkOut, r.checkIn, r.checkOut);
+      return r.status !== "denied" && datesOverlap(checkIn, checkOut, r.checkIn, r.checkOut);
     });
 
     if (hasConflict) {
-      showError(
-        "These dates overlap with an existing reservation. Please choose different dates.",
-      );
+      showError("These dates overlap with an existing reservation. Please choose different dates.");
       return;
     }
 
     var reservation = {
-      id: Date.now().toString(36) + Math.random().toString(36).slice(2, 7),
       name: name,
       email: email,
       phone: phone,
@@ -419,44 +424,29 @@
       guests: guests,
       notes: notes,
       status: "pending",
+      createdAt: new Date().toISOString(),
     };
 
-    // Disable button while sending
     submitBtn.disabled = true;
     submitBtn.textContent = "Submitting...";
 
-    reservations.push(reservation);
-    saveReservations(reservations);
+    addReservation(reservation).then(function () {
+      sendEmails(reservation);
+      sendTextMessages(reservation);
 
-    // Send notification emails and text messages
-    sendEmails(reservation);
-    sendTextMessages(reservation);
+      form.reset();
+      selectionStart = null;
+      selectionEnd = null;
+      submitBtn.disabled = false;
+      submitBtn.textContent = "Submit for Approval";
 
-    // Reset form and selection
-    form.reset();
-    selectionStart = null;
-    selectionEnd = null;
-    submitBtn.disabled = false;
-    submitBtn.textContent = "Submit for Approval";
-
-    showSuccess("Reservation submitted! A confirmation email and text message have been sent. Your booking is pending approval.");
-    renderCalendar();
-    renderReservations();
-  }
-
-  function cancelReservation(id) {
-    if (!confirm("Cancel this reservation?")) return;
-    var reservations = loadReservations().filter(function (r) {
-      return r.id !== id;
+      showSuccess("Reservation submitted! A confirmation email and text message have been sent. Your booking is pending approval.");
+    }).catch(function (err) {
+      console.error("Failed to save reservation:", err);
+      submitBtn.disabled = false;
+      submitBtn.textContent = "Submit for Approval";
+      showError("Failed to save reservation. Please check your connection and try again.");
     });
-    saveReservations(reservations);
-    renderCalendar();
-    renderReservations();
-  }
-
-  function showError(msg) {
-    formError.textContent = msg;
-    formError.hidden = false;
   }
 
   // --- Sync date inputs with calendar selection ---
@@ -504,8 +494,8 @@
 
     form.addEventListener("submit", handleSubmit);
 
-    renderCalendar();
-    renderReservations();
+    // Subscribe to real-time Firestore updates
+    subscribeToReservations();
   }
 
   init();

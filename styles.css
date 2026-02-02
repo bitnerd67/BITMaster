@@ -389,6 +389,89 @@ section h2 {
   padding: 2rem 0;
 }
 
+/* Header nav */
+.header-nav {
+  margin-top: 0.75rem;
+}
+
+.header-nav a {
+  color: rgba(255, 255, 255, 0.85);
+  text-decoration: none;
+  font-size: 0.9rem;
+  padding: 0.3rem 0.8rem;
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  border-radius: 4px;
+  transition: background 0.15s, color 0.15s;
+}
+
+.header-nav a:hover {
+  background: rgba(255, 255, 255, 0.15);
+  color: white;
+}
+
+/* Admin page */
+.admin-login {
+  display: flex;
+  justify-content: center;
+  padding-top: 3rem;
+}
+
+.admin-login section {
+  max-width: 380px;
+  width: 100%;
+}
+
+.admin-card {
+  flex-wrap: wrap;
+}
+
+.admin-actions {
+  display: flex;
+  gap: 0.5rem;
+  flex-shrink: 0;
+  align-items: flex-start;
+}
+
+.btn-approve {
+  background: var(--color-selected);
+  color: white;
+  border: none;
+  border-radius: 6px;
+  padding: 0.4rem 0.75rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s;
+}
+
+.btn-approve:hover {
+  background: #27ae60;
+}
+
+.btn-deny {
+  background: none;
+  border: 1px solid var(--color-reserved);
+  color: var(--color-reserved);
+  border-radius: 6px;
+  padding: 0.4rem 0.75rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s, color 0.15s;
+}
+
+.btn-deny:hover {
+  background: var(--color-reserved);
+  color: white;
+}
+
+.badge-denied {
+  background: var(--color-reserved-light);
+  color: var(--color-reserved);
+}
+
 /* Footer */
 footer {
   text-align: center;
